@@ -1,6 +1,11 @@
 import { useState } from "react";
+import api from "../lib/api";
 export default function GeneratePage() {
     const [issueKey, setIssueKey] = useState('');
+    async function analyze() {
+        if(!issueKey.trim()) return;
+        await api.post('/generations/preflight', {issueKey: issueKey.trim()})
+    }
     return (
         <div className="space-y-6">
             {/* Heading and the sub heading */}
@@ -19,15 +24,16 @@ export default function GeneratePage() {
                         className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
                     />
                     <button
-                        onClick={() => console.log('Analyze clicked:', issueKey)}
-                        disabled={!issueKey.trim()}
+                        
+                        disabled={issueKey ? false : true}
+                        onClick={analyze}
                         className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Analyze
                     </button>
                     <button
                         onClick={() => console.log('Generate clicked:', issueKey)}
-                        disabled={!issueKey.trim()}
+                        disabled={issueKey ? false : true}
                         className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Generate
