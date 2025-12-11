@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
 import api from "../lib/api";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 export default function GeneratePage() {
-    const navigate = useNavigate();
+    // const navigate = useNavigate();
     const [issueKey, setIssueKey] = useState('');
     const [prelight, setPrelight] = useState<any | null>(null);
     const [genResult, setGenResult] = useState<any | null>(null);
     const [analyzing, setAnalyzing] = useState(false);
     const [generating, setGenerating] = useState(false);
-    const [showExistingModal, setShowExistingModal] = useState(false);
+    // const [showExistingModal, setShowExistingModal] = useState(false);
 
     useEffect(() => {
         setPrelight(null);
-        setGenResult(null);
-        setShowExistingModal(false);
+        // setGenResult(null);
+        // setShowExistingModal(false);
     }, [issueKey]);
 
     async function analyze() {
@@ -30,6 +30,20 @@ export default function GeneratePage() {
         }
     }
 
+    async function performGeneration() {
+        if (!issueKey.trim()) return;
+        setGenerating(true);
+        setGenResult(null);
+        try {
+            const res = await api.post('/generations/testcases', { issueKey: issueKey.trim() });
+            setGenResult(res.data.data)
+        } catch (err: any) {
+            setGenResult({ error: err?.response?.data?.error || 'Generation failed' });
+        } finally {
+            setGenerating(false)
+        }
+    }
+
     return (
         <div className="space-y-6">
             {/* Heading and the sub heading */}
@@ -37,6 +51,7 @@ export default function GeneratePage() {
                 <h1 className="text-3xl font-bold text-gray-900">Generate Test Cases</h1>
                 <p className="mt-2 text-gray-600">Enter a JIRA issue key to analyze and generate comprehensive test cases</p>
             </div>
+
             {/* input card */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <div className="flex gap-3">
@@ -56,14 +71,15 @@ export default function GeneratePage() {
                         {analyzing ? 'Analyzing ...' : 'Analyze'}
                     </button>
                     <button
-                        onClick={() => console.log('Generate clicked:', issueKey)}
-                        disabled={issueKey ? false : true}
+                        disabled={!issueKey || generating}
+                        onClick={performGeneration}
                         className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Generate
+                        {generating ? 'Generating . . .' : 'Generate'}
                     </button>
                 </div>
             </div>
+
             {/** Prelight ressult */}
             {prelight && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -104,6 +120,42 @@ export default function GeneratePage() {
                                     <p className="text-gray-900">${typeof prelight.estimatedCost === 'string' ? prelight.estimatedCost : (Number(prelight.estimatedCost) || 0).toFixed(4)}</p>
                                 </div>
                             </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/** Generation result */}
+            {genResult && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Generation Complete</h2>
+                    {genResult.error ? (
+                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                            {genResult.error}
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <span className="text-sm font-medium text-gray-500">Issue Key</span>
+                                    <p className="text-lg font-semibold text-gray-900">{genResult.issueKey}</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-sm font-medium text-gray-500">Generation Time</span>
+                                    <p className="text-lg font-semibold text-gray-900">
+                                        {typeof genResult.generationTimeSeconds === 'string'
+                                            ? `${genResult.generationTimeSeconds}s`
+                                            : `${(Number(genResult.generationTimeSeconds) || 0).toFixed(1)}s`}
+                                    </p>
+                                </div>
+                            </div>
+                            {genResult.markdown && (
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                    <p className="text-sm text-green-800">
+                                        ✅ Test cases generated successfully! <Link to={`/view/${genResult.generationId}`} className="font-semibold underline hover:text-green-900">View Test Cases</Link>
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
