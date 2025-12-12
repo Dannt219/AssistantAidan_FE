@@ -5,6 +5,7 @@ import GeneratePage from './pages/GeneratePage.tsx';
 import DashboardPage from './pages/DashboardPage';
 import React from 'react';
 import { useAuthStore } from './state/auth';
+import ViewPage from './pages/ViewPage.tsx';
 
 
 function PrivateRoute({ children }: { children: React.JSX.Element }) {
@@ -65,35 +66,60 @@ function Layout({ children }: { children: React.JSX.Element }) {
                 </span>
               )}
               {accessToken && (
-                <button 
-                className='px-4 py-2 text-sm text-gray-600 bg-white border-gray-350 rounđe-lg hover:bg-gray-50 transition-colors'
-                onClick={logout}>
+                <button
+                  className='px-4 py-2 text-sm text-gray-600 bg-white border-gray-350 rounđe-lg hover:bg-gray-50 transition-colors'
+                  onClick={logout}>
                   Logout
                 </button>
               )}
+            </div>
           </div>
         </div>
-    </div>
       </header >
-    <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
-      {children}
-    </main>
+      <main className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'>
+        {children}
+      </main>
     </div >
   )
 }
 
 function App() {
   return (
-    <div className="App">
-      <Routes>
-        <Route path='/login' element={<LoginPage />} />
-        <Route path='/register' element={<RegisterPage />} />
-        <Route path='/' element={<Layout><PrivateRoute><GeneratePage /></PrivateRoute></Layout>} />
-        <Route path="/dashboard" element={<Layout><PrivateRoute><DashboardPage /></PrivateRoute></Layout>} />
-
-      </Routes>
-    </div>
-  )
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route
+        path="/"
+        element={
+          <Layout>
+            <PrivateRoute>
+              <GeneratePage />
+            </PrivateRoute>
+          </Layout>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <Layout>
+            <PrivateRoute>
+              <DashboardPage />
+            </PrivateRoute>
+          </Layout>
+        }
+      />
+      <Route
+        path="/view/:id"
+        element={
+          <Layout>
+            <PrivateRoute>
+              <ViewPage />
+            </PrivateRoute>
+          </Layout>
+        }
+      />
+    </Routes>
+  );
 }
 
 export default App
