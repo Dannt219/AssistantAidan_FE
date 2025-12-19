@@ -2,7 +2,7 @@ import axios from 'axios'
 import { useAuthStore } from '../state/auth'
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+    baseURL: import.meta.env.VITE_PROD_BE_URL || 'http://localhost:3000'
 })
 
 api.interceptors.request.use((config) => {
@@ -17,7 +17,7 @@ api.interceptors.request.use((config) => {
 
 // Handle 401 errors - redirect to login
 api.interceptors.response.use(
-    (response) => response, 
+    (response) => response,
     (error) => {
         if (error.response?.status === 401) {
             // Clear auth state

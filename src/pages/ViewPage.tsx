@@ -36,7 +36,7 @@ export default function ViewPage() {
     type DownloadFormat = 'md' | 'pdf' | 'xlsx';
 
 
-    const [format, setFormat] = useState<DownloadFormat>('md');
+    // const [format, setFormat] = useState<DownloadFormat>('md');
     const [downloading, setDownloading] = useState<boolean>(false);
     const [showDownloadMenu, setShowDownloadMenu] = useState<boolean>(false);
 
