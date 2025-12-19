@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../lib/api";
 import { Link } from "react-router-dom";
+import CombinedInput from "../components/CombinedInput";
 export default function GeneratePage() {
     // const navigate = useNavigate();
     const [issueKey, setIssueKey] = useState('');
@@ -8,6 +9,7 @@ export default function GeneratePage() {
     const [genResult, setGenResult] = useState<any | null>(null);
     const [analyzing, setAnalyzing] = useState(false);
     const [generating, setGenerating] = useState(false);
+    const [uploadedImages, setUploadedImages] = useState<File[]>([]);
     // const [showExistingModal, setShowExistingModal] = useState(false);
 
     useEffect(() => {
@@ -16,12 +18,32 @@ export default function GeneratePage() {
         // setShowExistingModal(false);
     }, [issueKey]);
 
+    const handleImagesChange = (images: File[]) => {
+        setUploadedImages(images);
+        // Reset prelight when images change
+        if (prelight) {
+            setPrelight(null);
+        }
+    };
+
     async function analyze() {
         if (!issueKey.trim()) return;
         setAnalyzing(true);
         setPrelight(null);
         try {
             const res = await api.post('/generations/prelight', { issueKey: issueKey.trim() });
+            
+            // Update cost estimation if images are uploaded
+            if (uploadedImages.length > 0) {
+                const baseEstimatedCost = parseFloat(res.data.estimatedCost) || 0;
+                const imageTokens = uploadedImages.length * 1000; // ~1000 tokens per image
+                const visionCost = (imageTokens / 1000000) * 2.50 + (8000 / 1000000) * 10.00; // gpt-4o pricing
+                
+                res.data.estimatedCost = (baseEstimatedCost + visionCost).toFixed(4);
+                res.data.estimatedTokens = (res.data.estimatedTokens || 0) + imageTokens;
+                res.data.imagesCount = uploadedImages.length;
+            }
+            
             setPrelight(res.data);
         } catch (err: any) {
             setPrelight({ error: err?.response?.data?.error || 'Analysis failed' });
@@ -34,13 +56,28 @@ export default function GeneratePage() {
         if (!issueKey.trim()) return;
         setGenerating(true);
         setGenResult(null);
+        
         try {
-            const res = await api.post('/generations/testcases', { issueKey: issueKey.trim() });
-            setGenResult(res.data.data)
+            // Create FormData for multipart request
+            const formData = new FormData();
+            formData.append('issueKey', issueKey.trim());
+            
+            // Add images to FormData
+            uploadedImages.forEach((image) => {
+                formData.append('images', image);
+            });
+
+            const res = await api.post('/generations/testcases', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            
+            setGenResult(res.data.data);
         } catch (err: any) {
             setGenResult({ error: err?.response?.data?.error || 'Generation failed' });
         } finally {
-            setGenerating(false)
+            setGenerating(false);
         }
     }
 
@@ -52,31 +89,36 @@ export default function GeneratePage() {
                 <p className="mt-2 text-gray-600">Enter a JIRA issue key to analyze and generate comprehensive test cases</p>
             </div>
 
-            {/* input card */}
+            {/* Combined Input Card */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex gap-3">
-                    <input
-                        type="text"
+                <div className="space-y-4">
+                    <CombinedInput
                         value={issueKey}
-                        onChange={(e) => setIssueKey(e.target.value)}
+                        onChange={setIssueKey}
+                        onImagesChange={handleImagesChange}
                         onKeyPress={(e) => e.key === 'Enter' && analyze()}
                         placeholder="Enter JIRA issue key (e.g., SDETPRO-123)"
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                        disabled={analyzing || generating}
+                        maxImages={5}
+                        maxSizePerImage={10}
                     />
-                    <button
-                        onClick={analyze}
-                        disabled={analyzing || !issueKey.trim()}
-                        className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {analyzing ? 'Analyzing ...' : 'Analyze'}
-                    </button>
-                    <button
-                        disabled={!issueKey || generating}
-                        onClick={performGeneration}
-                        className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {generating ? 'Generating . . .' : 'Generate'}
-                    </button>
+                    
+                    <div className="flex gap-3 justify-end">
+                        <button
+                            onClick={analyze}
+                            disabled={analyzing || !issueKey.trim()}
+                            className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {analyzing ? 'Analyzing ...' : 'Analyze'}
+                        </button>
+                        <button
+                            disabled={!issueKey || generating}
+                            onClick={performGeneration}
+                            className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {generating ? 'Generating . . .' : 'Generate'}
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -105,10 +147,16 @@ export default function GeneratePage() {
                                         {prelight.isUiStory ? 'Yes' : 'No'}
                                     </p>
                                 </div>
+                                {uploadedImages.length > 0 && (
+                                    <div>
+                                        <span className="text-sm font-medium text-gray-500">Images to Upload</span>
+                                        <p className="text-indigo-600 font-semibold">{uploadedImages.length} image(s)</p>
+                                    </div>
+                                )}
                             </div>
                             <div className="space-y-3">
                                 <div>
-                                    <span className="text-sm font-medium text-gray-500">Attachments</span>
+                                    <span className="text-sm font-medium text-gray-500">JIRA Attachments</span>
                                     <p className="text-gray-900">{prelight.attachments || 0}</p>
                                 </div>
                                 <div>
@@ -119,6 +167,12 @@ export default function GeneratePage() {
                                     <span className="text-sm font-medium text-gray-500">Estimated Cost</span>
                                     <p className="text-gray-900">${typeof prelight.estimatedCost === 'string' ? prelight.estimatedCost : (Number(prelight.estimatedCost) || 0).toFixed(4)}</p>
                                 </div>
+                                {uploadedImages.length > 0 && (
+                                    <div>
+                                        <span className="text-sm font-medium text-gray-500">AI Model</span>
+                                        <p className="text-indigo-600 font-semibold">GPT-4o Vision</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -152,7 +206,14 @@ export default function GeneratePage() {
                             {genResult.markdown && (
                                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                                     <p className="text-sm text-green-800">
-                                        ✅ Test cases generated successfully! <Link to={`/view/${genResult.generationId}`} className="font-semibold underline hover:text-green-900">View Test Cases</Link>
+                                        ✅ Test cases generated successfully! 
+                                        {genResult.imagesUsed > 0 && (
+                                            <span className="text-indigo-700 font-medium ml-1">
+                                                (Enhanced with {genResult.imagesUsed} image{genResult.imagesUsed > 1 ? 's' : ''})
+                                            </span>
+                                        )}
+                                        <br />
+                                        <Link to={`/view/${genResult.generationId}`} className="font-semibold underline hover:text-green-900">View Test Cases</Link>
                                     </p>
                                 </div>
                             )}

@@ -19,6 +19,8 @@ export default function ViewPage() {
     const [lastUpdatedBy, setLastUpdatedBy] = useState<string>('');
     const [updatedAt, setUpdatedAt] = useState<string>('');
     const [filename, setFilename] = useState<string>('output.md');
+    const [images, setImages] = useState<any[]>([]);
+    const [imagesCount, setImagesCount] = useState<number>(0);
 
     // Edit state
     const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -72,6 +74,8 @@ export default function ViewPage() {
                 setCurrentVersion(viewData.currentVersion || 1);
                 setLastUpdatedBy(viewData.lastUpdatedBy || '');
                 setUpdatedAt(viewData.updatedAt || '');
+                setImages(viewData.images || []);
+                setImagesCount(viewData.imagesCount || 0);
 
                 // Set publish state
                 setPublished(viewData.published || false);
@@ -296,6 +300,14 @@ export default function ViewPage() {
                                         </svg>
                                         <span className="truncate max-w-[180px]">{lastUpdatedBy}</span>
                                     </span>
+                                    {imagesCount > 0 && (
+                                        <span className="flex items-center gap-1.5">
+                                            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            <span>{imagesCount} image{imagesCount > 1 ? 's' : ''}</span>
+                                        </span>
+                                    )}
                                 </div>
                             </div>
 
@@ -518,6 +530,66 @@ export default function ViewPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Images Gallery */}
+                {images && images.length > 0 && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">
+                            Uploaded Images ({images.length})
+                        </h3>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {images.map((image: any, index: number) => (
+                                <div key={index} className="group relative">
+                                    <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                                        <img
+                                            src={`/api/generations/images/${image.filename}`}
+                                            alt={image.originalName}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                            onError={(e) => {
+                                                // Fallback if image fails to load
+                                                const target = e.target as HTMLImageElement;
+                                                target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQgMTZMMTMuNTg1NyA2LjQxNDI5QzE0LjM2NjggNS42MzMxNyAxNS42MzMyIDUuNjMzMTcgMTYuNDE0MyA2LjQxNDI5TDIwIDE0TTYgMjBIMThBMiAyIDAgMDAyMCAxOFY2QTIgMiAwIDAwMTggNEg2QTIgMiAwIDAwNCA2VjE4QTIgMiAwIDAwNiAyMFoiIHN0cm9rZT0iIzlDQTNBRiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+';
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="mt-2">
+                                        <p className="text-xs text-gray-600 truncate" title={image.originalName}>
+                                            {image.originalName}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            {image.width && image.height && `${image.width}×${image.height}`}
+                                            {image.size && ` • ${(image.size / 1024).toFixed(1)}KB`}
+                                        </p>
+                                    </div>
+                                    
+                                    {/* Click to view full size */}
+                                    <button
+                                        onClick={() => {
+                                            const modal = document.createElement('div');
+                                            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+                                            modal.innerHTML = `
+                                                <div class="relative max-w-4xl max-h-full">
+                                                    <img src="/api/generations/images/${image.filename}" alt="${image.originalName}" class="max-w-full max-h-full object-contain rounded-lg" />
+                                                    <button class="absolute top-4 right-4 text-white bg-black bg-opacity-50 rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-75 transition-colors" onclick="this.parentElement.parentElement.remove()">×</button>
+                                                    <div class="absolute bottom-4 left-4 text-white bg-black bg-opacity-50 px-3 py-1 rounded text-sm">${image.originalName}</div>
+                                                </div>
+                                            `;
+                                            modal.onclick = (e) => {
+                                                if (e.target === modal) modal.remove();
+                                            };
+                                            document.body.appendChild(modal);
+                                        }}
+                                        className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100"
+                                    >
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Content Display - from previous lesson */}
                 {isEditing ? (
