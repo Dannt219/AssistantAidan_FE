@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import api from "../lib/api";
 import { Link } from "react-router-dom";
+import UnifiedInputBox from "../components/UnifiedInputBox";
+
 export default function GeneratePage() {
     // const navigate = useNavigate();
     const [issueKey, setIssueKey] = useState('');
@@ -16,12 +18,16 @@ export default function GeneratePage() {
         // setShowExistingModal(false);
     }, [issueKey]);
 
-    async function analyze() {
+    async function analyze(imageSessionId?: string) {
         if (!issueKey.trim()) return;
         setAnalyzing(true);
         setPrelight(null);
         try {
-            const res = await api.post('/generations/prelight', { issueKey: issueKey.trim() });
+            const payload: any = { issueKey: issueKey.trim() };
+            if (imageSessionId) {
+                payload.imageSessionId = imageSessionId;
+            }
+            const res = await api.post('/generations/prelight', payload);
             setPrelight(res.data);
         } catch (err: any) {
             setPrelight({ error: err?.response?.data?.error || 'Analysis failed' });
@@ -30,12 +36,16 @@ export default function GeneratePage() {
         }
     }
 
-    async function performGeneration() {
+    async function performGeneration(imageSessionId?: string) {
         if (!issueKey.trim()) return;
         setGenerating(true);
         setGenResult(null);
         try {
-            const res = await api.post('/generations/testcases', { issueKey: issueKey.trim() });
+            const payload: any = { issueKey: issueKey.trim() };
+            if (imageSessionId) {
+                payload.imageSessionId = imageSessionId;
+            }
+            const res = await api.post('/generations/testcases', payload);
             setGenResult(res.data.data)
         } catch (err: any) {
             setGenResult({ error: err?.response?.data?.error || 'Generation failed' });
@@ -49,36 +59,18 @@ export default function GeneratePage() {
             {/* Heading and the sub heading */}
             <div>
                 <h1 className="text-3xl font-bold text-gray-900">Generate Test Cases</h1>
-                <p className="mt-2 text-gray-600">Enter a JIRA issue key to analyze and generate comprehensive test cases</p>
+                <p className="mt-2 text-gray-600">Enter a JIRA issue key and optionally add images to generate comprehensive test cases</p>
             </div>
 
-            {/* input card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex gap-3">
-                    <input
-                        type="text"
-                        value={issueKey}
-                        onChange={(e) => setIssueKey(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && analyze()}
-                        placeholder="Enter JIRA issue key (e.g., SDETPRO-123)"
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                    />
-                    <button
-                        onClick={analyze}
-                        disabled={analyzing || !issueKey.trim()}
-                        className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {analyzing ? 'Analyzing ...' : 'Analyze'}
-                    </button>
-                    <button
-                        disabled={!issueKey || generating}
-                        onClick={performGeneration}
-                        className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {generating ? 'Generating . . .' : 'Generate'}
-                    </button>
-                </div>
-            </div>
+            {/* Unified Input Box with Image Upload */}
+            <UnifiedInputBox
+                value={issueKey}
+                onChange={setIssueKey}
+                onAnalyze={analyze}
+                onGenerate={performGeneration}
+                analyzing={analyzing}
+                generating={generating}
+            />
 
             {/** Prelight ressult */}
             {prelight && (
